@@ -1,0 +1,114 @@
+<?php
+/**
+ * TODO take InputfieldFieldConfig out of being a module and make it a class (or make it a system module???)
+ * TODO arrange the delete tab so that a delete can happen with a custom string in the title
+ * ---------------
+ * TODO Hook into a template name change and alter the db
+ * TODO Possibly an export of the module-user info so that when the module is unistalled and reinstalled the auto deletes still work.
+ * TODO Make the 'generate_pages' module-user invisible somehow
+ *
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * TODO - need to hook template delete and remove db rows
+ * todo - need to hook a template create that copies another template?????
+ * TODO The dates are not saving in the field tab. Only saving the year!!!!!!!!!!!
+ * todo Sometimes a text field will be numbers and it would be nice to be able to designate an upper and lower span for numbers as text
+ *
+ * NOTES FOR USERS
+ * - This module relies heavily on the settings in pages that allow for parents and children (these should be set)
+ * - If the plugin is uninstalled and re-installed then deleting auto-generated page will not work ( a new user is created on install and it will have a new id number)
+ *
+ * User: lloop
+ * Date: 6/25/14
+ * Time: 5:58 PM
+ */
+
+
+class NewFieldsGeneratePages extends WireData implements Module {
+
+
+  /**
+   *
+   *
+   */
+  public function __construct() {
+
+    parent::__construct();
+
+    $dir = dirname(__FILE__);
+    require_once($dir . "/classes/DatabaseQueries.php");
+
+    $this->db_queries = new DatabaseQueries();
+
+  }
+
+
+  public static function getModuleInfo() {
+
+    return array(
+      'title' => 'Generate Pages - New Fields',
+      'version' => 1,
+      'summary' => 'Broken out of Generate Pages module so that only hooks are auto-loaded',
+      'author' => 'Richard Panciera',
+      'href' => '',
+      'singular' => true,
+      'autoload' => true,
+      'requires' => array('ProcessGeneratePages', 'ProcessWire>=2.5.2')
+    );
+
+  }
+
+
+  /**
+   *
+   *
+   */
+  public function init() {
+
+    // Hook into a template save to add db table rows for field configs
+    $this->addHookAfter('ProcessTemplate::fieldAdded', $this, 'addConfigFields');
+    // Hook into a template save to add db table rows for field configs
+    $this->addHookAfter('ProcessTemplate::fieldRemoved', $this, 'removeConfigFields');
+
+    // todo - need to hook template delete
+    // todo - need to hook a template create that copies another template?????
+
+  }
+
+
+  /**
+   * A callback function for the hook on the template save to add
+   * rows into the config table when a field is added to the template
+   *
+   * @param $event
+   */
+  public function addConfigFields(HookEvent $event) {
+
+    $field = $event->arguments(0);
+    $template = $event->arguments(1);
+
+    $this->db_queries->createConfigRows($field, $template);
+
+//    $this->message("Generate Pages config fields created!");
+
+  }
+
+
+  /**
+   * A callback function for the hook on the template save to add
+   * rows into the config table when a field is removed from the template
+   *
+   * @param $event
+   */
+  public function removeConfigFields(HookEvent $event) {
+
+    $field = $event->arguments(0);
+    $template = $event->arguments(1);
+
+    $this->db_queries->deleteConfigRows($field, $template);
+
+//    $this->message("Generate Pages Hook removeConfigField Executed!");
+
+  }
+
+
+}

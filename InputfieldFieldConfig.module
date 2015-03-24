@@ -1,0 +1,202 @@
+<?php
+/**
+ * This will handle an individual field (row or collection of inputconfig
+ * objects) within the table
+ *
+ * User: lloop
+ * Date: 7/1/14
+ * Time: 11:15 AM
+ */
+
+/**
+ * Class InputfieldFieldConfig
+ */
+class InputfieldFieldConfig extends Inputfield {
+
+  public static function getModuleInfo() {
+    return array(
+      'title' => 'Generate Pages - Fieldconfig Inputfield',
+      'version' => 1,
+      'summary' => 'Input field for configuring templates in Generate Pages module.',
+      'requires' => array('ProcessGeneratePages', 'ProcessWire>=2.5.2')
+    );
+  }
+
+
+  /**
+   * Initialize this Inputfield
+   *
+   */
+  public function init() {
+
+    $dir = dirname(__FILE__);
+    require_once($dir . "/classes/FieldConfig.php");
+    require_once($dir . "/classes/FieldStructure.php");
+
+  }
+
+  public function __construct() {
+    parent::__construct();
+  }
+
+  private $page;
+  private $subject_field;
+  private $values = array();
+  private $template_name;
+
+
+
+  /**
+   *
+   *
+   * @param Page $page
+   */
+  public function setPage(Page $page) {
+    $this->page = $page;
+  }
+
+
+  /**
+   *
+   *
+   * @param Field $field
+   */
+  public function setField(Field $field) {
+    $this->subject_field = $field;
+  }
+
+
+  /**
+   * Set values from db. If $key is an array, then treat it like it's a query result.
+   * Iterate through and assign from the second level array.
+   *
+   * @param $keys string | array(int)('column name' => 'column value')
+   * @param $value
+   * @internal param $values
+   */
+  public function setValues($val) {
+
+    $this->values = $val;
+
+  }
+
+
+  /**
+   *
+   *
+   * @param Field $field
+   */
+  public function setTemplateName($name) {
+    $this->template_name = $name;
+  }
+
+
+  /**
+   * Render the entire input area (single subject_field config area) for FieldConfig
+   *
+   */
+  public function ___render() {
+    $out = $this->getConfigItems();
+    return $out;
+  }
+
+
+  /**
+   * Returns the config names
+   *
+   * @param $field_tyoe
+   * @return mixed
+   */
+  public function getConfigNames() {
+
+    $names = array();
+
+    // Get the structure
+    $structure = new FieldStructure();
+    $items = $structure->getItems($this->subject_field);
+
+    foreach ($items as $key=>$value) {
+      if ($value['type'] === 'input') array_push($names, $key);
+    }
+
+    return $names;
+  }
+
+
+  /**
+   *
+   *
+   * @return InputfieldWrapper
+   * @throws WireException
+   */
+  public function getConfigItems() {
+
+    // Get the structure
+    $structure = new FieldStructure();
+    $items = $structure->getItems($this->subject_field);
+
+    $wrapper = new InputfieldWrapper();
+
+    // Iterate through the items in the array
+    foreach ($items as $name => $data) {
+
+      if ($data['type'] === 'fieldset_open') {
+
+        // Instantiate a fieldset
+        $fieldset = wire('modules')->get("InputfieldFieldset");
+        $fieldset->attr('name', $name);
+        $fieldset->set('template_name', $this->template_name);
+        if (!empty($data['label'])) $fieldset->label = $data['label'];
+        if (!empty($data['description'])) $fieldset->description = $data['description'];
+
+      } elseif ($data['type'] === 'input') {
+
+        // An input
+        $field_config = new FieldConfig();
+        $field_config->set('config_name', $name);
+        $field_config->set('value', $this->values[$name]);
+        $field_config->set('template_name', $this->template_name);
+        if (!empty($data['label'])) $field_config->set('label', $data['label']);
+        $field_config->set('field_id', $this->subject_field->id);
+        $fieldset->append($field_config->getItem());
+
+      } elseif ($data['type'] === 'fieldset_close') {
+
+        // Close a fieldset
+        $wrapper->append($fieldset);
+
+      }
+
+    }
+
+    return $wrapper;
+
+  }
+
+
+  /**
+   *
+   *
+   * @return array
+   */
+  public function getDefaults() {
+
+    $defaults = array();
+
+    // Get the structure
+    $structure = new FieldStructure();
+    $items = $structure->getItems($this->subject_field);
+
+    foreach ($items as $name => $data) {
+      if ($data['type'] === 'input') $defaults[$name] = ProcessGeneratePages::$default_values[$name]['value'];
+    }
+
+    return $defaults;
+
+  }
+
+}
+
+
+
+

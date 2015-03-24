@@ -1,0 +1,442 @@
+<?php
+/**
+ * TODO arrange the delete tab so that a delete search can happen with a custom string in the title
+ * TODO when fields tab opens make the sort order on templates
+ * ---------------
+ * TODO Hook into a template name change and alter the db
+ * TODO Hook into a field add or remove on a template and add or remove from the field config table
+ * TODO Possibly an export of the module-user info so that when the module is unistalled and reinstalled the auto deletes still work.
+ * TODO take InputfieldFieldConfig out of being a module and make it a class (or make it a system module???)
+ * * TODO Make the 'generate_pages' module-user invisible somehow
+ * * TODO Make the 'input field' and 'new fields' modules invisible
+ *
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * TODO Create an opton to delete auto files recursively down from the folder branch selected
+ * TODO In file fileds when the allowable extensions are saved in a config export and then imported, it introduces commas that mess up the next config save
+ * TODO Add an append to the prepend string option on string generation
+ * TODO Added a new repeater with a URL field in it (weblink) to a template and it didn't show up in the fields tab
+ * TODO when a field is within a reoeater field , should it have a probability??? (yes because there could be many subfields and some could be filled others not)
+ * TODO Sometimes a text field will be numbers and it would be nice to be able to designate an upper and lower span for numbers as text
+ * TODO When there is a file repeat field, it would be nice to specify how many repeats and that a certain type is required(so it will always have pdf, and maybe doc)
+ * TODO Prompt on page generate for the option to create new pages in page fields when none exist(IE - when no tags exist create new ones). Must specify how many is the upper limit to generate.
+ *
+ * NOTES FOR USERS
+ * - This module relies heavily on the settings in pages that allow for parents and children (these should be set)
+ * - If the plugin is uninstalled and re-installed then deleting auto-generated page will not work ( a new user is created on install and it will have a new id number)
+ *
+ * User: lloop
+ * Date: 6/25/14
+ * Time: 5:58 PM
+ */
+
+
+class ProcessGeneratePages extends Process implements Module {
+
+  const USER_NAME = 'generate_pages';
+  const PAGE_NAME = 'gpedit';
+  const TABLE_NAME = 'gp_field_configs';
+  const PERMISSION_NAME = 'gen-pages';
+
+  // Path for the temp folder for image and file gen
+  public $temp_path;
+
+  // Valid field types
+  static $valid_types = array(
+    "FieldtypePageTitle"            => 'text',
+    "FieldtypePageTitleLanguage"    => 'text',
+    "FieldtypeText"                 => 'text',
+    "FieldtypeTextLanguage"         => 'text',
+    "FieldtypeTextarea"             => 'text',
+    "FieldtypeTextareaLanguage"     => 'text',
+    "FieldtypeComments"             => 'text',
+    "FieldtypeEmail"                => 'text',
+    "FieldtypeURL"                  => 'text',
+    "FieldtypeInteger"              => 'number',
+    "FieldtypeFloat"                => 'number',
+    "FieldtypeDatetime"             => 'date',
+    "FieldtypePage"                 => 'page',
+    "FieldtypeRepeater"             => 'repeater',
+    "FieldtypeCheckbox"             => 'checkbox',
+    "FieldtypeFile"                 => 'file',
+    "FieldtypeImage"                => 'image'
+  );
+
+  // todo Use this php function for the datedefault values
+  // date("Y-m-d H:i:s");
+
+  // Default values
+  static $default_values = array(
+    'probability'         => array('value'      => '100',
+                                   'sanitizer'  => 'int'
+    ),
+    'conf_notes'          => array('value'      => '',
+                                   'sanitizer'  => 'text_area'
+    ),
+    'lower_limit'         => array('value'      => '1',
+                                   'sanitizer'  => 'int'
+    ),
+    'upper_limit'         => array('value'      => '5',
+                                   'sanitizer'  => 'int'
+    ),
+    'lower_size'          => array('value'      => '1',
+                                   'sanitizer'  => 'float'
+    ),
+    'upper_size'          => array('value'      => '2',
+                                   'sanitizer'  => 'float'
+    ),
+    'lower_width'         => array('value'      => '10',
+                                   'sanitizer'  => 'int'
+    ),
+    'lower_height'         => array('value'     => '10',
+                                    'sanitizer' => 'int'
+    ),
+    'upper_width'         => array('value'      => '100',
+                                   'sanitizer'  => 'int'
+    ),
+    'upper_height'         => array('value'     => '100',
+                                    'sanitizer' => 'int'
+    ),
+    'earliest_date'       => array('value'      => '2010-01-01 00:00:01',
+                                   'sanitizer'  => 'text'
+    ),
+    'latest_date'         => array('value'      => '2010-01-01 00:00:01',
+                                   'sanitizer'  => 'text'
+    ),
+    'date_dep_confirm'      => array('value'      => '!chkd',
+                                   'sanitizer'  => 'text'
+    ),
+    'date_dep_length'     => array('value'     => '0',
+                                    'sanitizer' => 'int'
+    ),
+    'string_type'         => array('value'      => 'lorem_ipsum',
+                                   'sanitizer'  => 'text_small'
+    ),
+    'capitalization'      => array('value'      => 'no_caps',
+                                   'sanitizer'  => 'text_small'
+    ),
+    'prepend_confirm'     => array('value'      => '!chkd',
+                                   'sanitizer'  => 'text'
+    ),
+    'custom_confirm'      => array('value'      => '!chkd',
+                                   'sanitizer'  => 'text'
+    ),
+    'custom_string'       => array('value'      => '',
+                                   'sanitizer'  => 'text'
+    ),
+    'prepared_confirm'    => array('value'      => '!chkd',
+                                   'sanitizer'  => 'text'
+    ),
+    'prepared_values'     => array('value'      => '',
+                                   'sanitizer'  => 'text_area'
+    ),
+    'normal_dev_confirm'  => array('value'      => 'chkd',
+                                   'sanitizer'  => 'text'
+    ),
+    'deviation_type'      => array('value'      => 'average',
+                                   'sanitizer'  => 'text_small'
+    ),
+    'standard_deviation'  => array('value'      => '3',
+                                   'sanitizer'  => 'int'
+    ),
+    'extension_types'     => array('value'      => "pdf",
+                                   'sanitizer'  => 'text_area'
+    ),
+    'units'               => array('value'      => 'meg',
+                                   'sanitizer'  => 'text_small'
+    ),
+  );
+
+
+  /**
+   *
+   *
+   */
+  public function __construct() {
+
+    $this->temp_path = wire("config")->paths->assets . "/gen_pages_temp";
+
+    $dir = dirname(__FILE__);
+    require_once($dir . "/GPInterfaces.php");
+    require_once($dir . "/classes/Tab.php");
+    require_once($dir . "/classes/TabGenerate.php");
+    require_once($dir . "/classes/TabDelete.php");
+    require_once($dir . "/classes/TabConfig.php");
+    require_once($dir . "/classes/DatabaseQueries.php");
+
+  }
+
+
+  public static function getModuleInfo() {
+
+    $permission = self::PERMISSION_NAME;
+    // $p = wire('permissions')->get('gen-pages');
+    // if (!$p->id) $permission = 'page-edit';
+
+    return array(
+      'title' => 'Generate Pages',
+      'version' => 1,
+      'summary' => 'Automatically create pages with randomly generated content',
+      'author' => 'Richard Panciera',
+      'href' => '',
+      'singular' => true,
+      'autoload' => false,
+      'permission' => $permission,
+      'requires' => array('ProcessWire>=2.5.2'),
+      'installs'  => array('InputfieldFieldConfig', 'NewFieldsGeneratePages')
+    );
+
+  }
+
+
+  /**
+   *
+   */
+  public function init() {
+
+    parent::init();
+
+    $this->modules->get('JqueryWireTabs');
+
+  }
+
+
+
+  /**
+   *
+   */
+  public function ___install() {
+
+    parent::___install();
+
+    $database = $this->wire('database');
+
+    $db_queries = new DatabaseQueries();
+
+    // Create the temp folder for image and file creation
+    // (insures the plugin has permissions)
+    if (!file_exists($this->temp_path)) {
+      mkdir($this->temp_path , 0777);
+    } elseif (!is_dir($this->temp_path )) {
+      $this->error("A file named 'gen_pages_temp' already exists. Can't create the temp folder for file generation");
+    } else {
+      chmod($this->temp_path , 0777);
+    }
+
+    // Create the page in the setup menu pulldown
+    $page = $this->pages->get('template=admin,name=' . self::PAGE_NAME);
+    if (!$page->id) {
+      $page = new Page();
+      $page->template = 'admin';
+      $page->parent = $this->pages->get($this->config->adminRootPageID)->child('name=setup');
+      $page->title = 'GeneratePages';
+      $page->name = self::PAGE_NAME;
+      $page->process = $this;
+      $page->save();
+    }
+
+    // Create the table in the db
+    $table_exists = $db_queries->checkTable(self::TABLE_NAME);
+    if(!$table_exists) $db_queries->createTable(self::TABLE_NAME);
+
+    // Get all the valid templates to compare
+    // selectors :: noParents-able to have parents, flags-????
+    $valid_templates = wire('templates')->find('noParents!=1, flags<8');
+
+    // Get all the fields at all depths
+    $subject_fields = $this->fields->getAll();
+
+    // Process the repeater fields first to eliminate the problem
+    // with repeated fields before the repeater.
+    // Instead of adding the template to the valid templates array,
+    // add the field to the templates of the repeater
+    // so that subiect_field->getTemplates() returns a valid template
+    $repeaters = $this->fields->find('type=FieldtypeRepeater');
+    foreach ($repeaters as $repeater) {
+      $repeater_fieldgroups = $repeater->getFieldgroups();
+      $repeated_fields = $repeater->repeaterFields;
+      // Traverse the sub-fields
+      foreach ($repeated_fields as $repeated_id) {
+        $repeated_field = wire('fields')->get($repeated_id);
+        // For each fieldgroup the repeater is in, add the
+        // repeated_field id to the fieldgroup
+        // So we are taking the repeated sub-field out of the repeater and
+        // placing it into each fieldgroup that is using the repeater
+        foreach ($repeater_fieldgroups as $fg) {
+          $fg->add($repeated_field);
+        }
+      }
+    }
+
+    // For each subject field
+    foreach($subject_fields as $subject_field) {
+
+      // Foreach template that the subject field is in
+      foreach ($subject_field->getTemplates() as $subject_template) {
+
+        // Filter out unwanted templates
+        if ($valid_templates->has($subject_template)) {
+
+          // Create the various config field rows in the db for
+          // this type of subject field
+          $db_queries->createConfigRows($subject_field, $subject_template);
+
+        }
+
+      }
+
+    }
+
+    // Create module-user
+    // todo ?? Limit module user to only creating and deleting pages??
+    $user_name = self::USER_NAME;
+    if(!wire('users')->get("name={$user_name}")->id) {
+      $u = new User();
+      $u->name = self::USER_NAME;
+      $u->addStatus(Page::statusHidden);
+      // $u->addStatus(Page::statusUnpublished);
+      // $u->addStatus(Page::statusSystem);
+      // $u->pass = "BamBam!";
+      $u->addRole("superuser");
+      $u->save();
+    }
+
+    // Permission to view the admin page
+    $permission = $this->permissions->get(self::PERMISSION_NAME);
+    if (!$permission->id) {
+      $p = new Permission();
+      $p->name = self::PERMISSION_NAME;
+      $p->title = $this->_('View Generate_Pages Edit Page');
+      $p->save();
+    }
+
+  }
+
+
+  /**
+   *
+   */
+  public function ___uninstall() {
+
+    parent::___uninstall();
+
+    $db_queries = new DatabaseQueries();
+
+    // Delete the temp folder
+    if (file_exists($this->temp_path ) && is_dir($this->temp_path )) {
+      $this->rrmdir($this->temp_path );
+    }
+
+    // Delete page in setup pulldown
+    $page = $this->pages->get('template=admin, name=' . self::PAGE_NAME);
+    if ($page->id) $page->delete();
+
+    // Delete the permissions
+    $permission = $this->permissions->get(self::PERMISSION_NAME);
+    if ($permission->id) $permission->delete();
+
+    // Drop the table
+    $table_exists = $db_queries->checkTable(self::TABLE_NAME);
+    if($table_exists) $db_queries->dropTable(self::TABLE_NAME);
+
+    // Delete the module-user
+    $module_user = wire('users')->get(self::USER_NAME);
+    // $module_user->addStatus(Page::statusSystemOverride);
+    if($module_user->id)  wire('users')->delete($module_user);
+
+
+    // Todo prompt for a database backup.
+    // Todo promt for leaving the user on the db
+    // Todo prompt for removing all the auto generated pages
+
+  }
+
+
+
+  /**
+   * Construct the edit page.
+   * This function is executed when a page with your Process assigned is accessed.
+   *
+   * @access public
+   */
+  public function ___execute() {
+
+    $set = $this->modules->get('InputfieldFieldset');
+
+    // Instantiate the forms
+    $generate_form = wire('modules')->get('InputfieldForm');
+    $delete_form = wire('modules')->get('InputfieldForm');
+    $config_form = wire('modules')->get('InputfieldForm');
+
+    // Instantiate the tab objects
+    $generate_tab = new TabGenerate();
+    $delete_tab = new TabDelete();
+    $config_tab = new TabConfig();
+
+    // Check POST requests for 'Generate', 'Delete',
+    // 'Save Configs', 'Import Configs', or 'Export Configs'\
+    if ($this->input->post->submit_generate) {
+      $generate_tab->execute($config_form);
+    } else if ($this->input->post->submit_delete) {
+      $delete_tab->execute();
+    } else if ($this->input->post->submit_config) {
+      $config_tab->execute($config_form);
+    } else if ($this->input->post->submit_import) {
+      if(array_key_exists("name", $_FILES['config_import'])) {
+        $filename = $_FILES['config_import']["name"][0];
+        $config_tab->import($filename);
+      } else {
+        throw new WireException("No uploaded file");
+      }
+    } else if ($this->input->post->submit_export) {
+      $config_tab->export();
+    }
+
+    // Generate tab
+    $generate_wrapper = new InputfieldWrapper();
+    $generate_wrapper->attr('title', $this->_('Generate'));
+    $generate_wrapper->attr('class', 'tabs');
+    $form_generate = $generate_tab->buildGenerateTab($generate_form);
+    $generate_wrapper->append($form_generate);
+    $set->append($generate_wrapper);
+
+    // Delete tab
+    $delete_wrapper = new InputfieldWrapper();
+    $delete_wrapper->attr('title', $this->_('Delete'));
+    $delete_wrapper->attr('class', 'tabs');
+    $form_delete = $delete_tab->buildDeleteTab($delete_form);
+    $delete_wrapper->append($form_delete);
+    $set->append($delete_wrapper);
+
+    // Config tab
+    $config_wrapper = new InputfieldWrapper();
+    $config_wrapper->attr('title', $this->_('Fields'));
+    $config_wrapper->attr('class', 'tabs');
+    $form_field = $config_tab->buildConfigTab($config_form);
+    $config_wrapper->append($form_field);
+    $set->append($config_wrapper);
+
+    return $set->render();
+
+  }
+
+  /**
+   * Recursively removes a directory
+   *
+   * @param $dir
+   */
+  private function rrmdir($dir) {
+    if (is_dir($dir)) {
+      $objects = scandir($dir);
+      foreach ($objects as $object) {
+        if ($object != "." && $object != "..") {
+          if (filetype($dir."/".$object) == "dir") rrmdir($dir."/".$object); else unlink($dir."/".$object);
+        }
+      }
+      reset($objects);
+      rmdir($dir);
+    }
+  }
+
+
+
+}

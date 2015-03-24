@@ -1,0 +1,106 @@
+.f-right {
+  float: right;
+}
+
+.f-left {
+  float: left;
+}
+
+#wrap_changeParent,
+#wrap_changeTemplate {
+	display: none; 
+}
+
+#wrap_Inputfield_filters .ui-widget-content {
+	padding-bottom: 24px;
+}
+
+/*table.batcher_pages tr > td {*/
+	/*padding-right: 10px;*/
+/*}*/
+
+/*table.batcher_pages tr th {*/
+	/*padding-right: 5px;*/
+/*}*/
+
+/*table.batcher_create tr td {*/
+	/*padding-right: 15px;*/
+	/*vertical-align: middle;*/
+/*}*/
+
+/*table.batcher_create tr td:last-child {*/
+	/*text-align: right;*/
+/*}*/
+
+/*.batcher_small {*/
+	/*font-size: 10px;*/
+/*}*/
+
+.red  { 
+	color: red; 
+}
+
+table.gen-pages-templates {
+  width: 50%;
+}
+
+#wrap_Inputfield_amount, #wrap_action {
+  display: inline-block;
+  width: 100%;
+}
+
+#wrap_submit_action {
+  float: none;
+}
+/*.gp-small-item {*/
+  /*width: 50%;*/
+/*}*/
+
+/*.gen-pages-top-row {*/
+  /*display: inline-block;*/
+  /*width: 320px;*/
+/*}*/
+
+/*form.gen-pages-form-action {*/
+  /*width: 800px;*/
+/*}*/
+
+form-field-short {
+  width: 100px;
+}
+
+table.gen-pages-fields {
+  /*table-layout: fixed;*/
+}
+
+table.gen-pages-fields thead > tr > th:first-child {
+  width: 30px;
+}
+
+.head-right {
+  width: 30%;
+}
+
+/* Icon for filed config rows */
+
+.ui-widget-gp {
+  width: 16px;
+  height: 16px;
+  background-image: url(images/ui-icons_2f4248_256x240.png);
+}
+
+.ui-icon-triangle-1-e {
+  background-position: -32px -16px;
+}
+
+.ui-icon-triangle-1-s {
+  background-position: -64px -16px;
+}
+
+a.ui-icon-disk {
+  background-position: -96px -112px;
+}
+
+a.ui-icon-disk:hover {
+  background-position: -192px -48px;
+}

@@ -1,0 +1,45 @@
+TODO
+
+-- The Big Things
+    - Be able to export and import the database. Put this option on the field config tab.
+     Also add a popup tha asks if the user wants to backup the database and user id number
+     when the module is uninstalled.
+     Prompt for the option that the module user be left so that in the future the auto generated pages can be deleted?
+     Maybe an option to leave the module user and a check on module install that if a module
+     user exists already it doesn't have to create one
+    - install check for a previous module user and if it exists use that
+    - Add to the database when new fields are added to a template.(also when a new template
+     is created with fields automatically.
+    - Some kind of cache for the folder structure so that everytime a save or
+     generate function is executed you don't have to drill back down through the folder
+     structure to the one you were just using
+    - Work out how to have the config input field module not show up in the module manager
+        (take it out of being a module and make it a class??? )
+    - The date configs should have an option to reference another date filed in that template
+        When the pulldown selcts another date field then the date field references the field with
+        a range of time representing the possibility of how long the event would be
+        from that satrt/reference date
+
+- work on publish from date
+
+- on repeats sometimes you have a probaility on the repeat itself and then probability on the
+    sub fileds and they should be automatic if the repeat is generated
+
+- refine the font size and placement in the image generation
+
+- date fields should have an option to use today and a refernce from today (both backwards and forwards)
+
+- Arrange for all installed languages to generate content also.
+    Set a checkbox on the generate page to choose the option to add language capapbility
+
+- ??? When the plugin is uninstallled have it automatically generate a recovery file. That file has the field configs
+        and it also records the DB ID of the modules user acoount in order to be able to delete pages
+        that were created previously. In the module automatically check an array of user IDs ti delete
+        PROBLEM - The old user IDs will be able to be used by PW so you might delete good pages.
+        Maybe script something to change old generated pages' user id numbers to the new one on install.
+
+
+- Figure out how to get past the time limit when generating alot of pages
+     Can use set_time_limit(); to reset the time limit so do pages in batches of 10 or so and reset at end
+
+-
