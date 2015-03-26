@@ -2,6 +2,7 @@
 /**
  * TODO arrange the delete tab so that a delete search can happen with a custom string in the title
  * TODO when fields tab opens make the sort order on templates
+ * TODO Change name of NewFieldsGeneratePages.module to HooksGeneratePages.module
  * ---------------
  * TODO Hook into a template name change and alter the db
  * TODO Hook into a field add or remove on a template and add or remove from the field config table
@@ -217,7 +218,7 @@ class ProcessGeneratePages extends Process implements Module {
     if (!file_exists($this->temp_path)) {
       mkdir($this->temp_path , 0777);
     } elseif (!is_dir($this->temp_path )) {
-      $this->error("A file named 'gen_pages_temp' already exists. Can't create the temp folder for file generation");
+      $this->error("A file named 'gen_pages_temp' already exists in assets folder. Can't create the temp folder for file generation");
     } else {
       chmod($this->temp_path , 0777);
     }

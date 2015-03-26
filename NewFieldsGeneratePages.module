@@ -1,15 +1,12 @@
 <?php
 /**
  * TODO take InputfieldFieldConfig out of being a module and make it a class (or make it a system module???)
- * TODO arrange the delete tab so that a delete can happen with a custom string in the title
+ * TODO arrange the delete tab so that a delete search can happen with a custom string in the title
  * ---------------
- * TODO Hook into a template name change and alter the db
  * TODO Possibly an export of the module-user info so that when the module is unistalled and reinstalled the auto deletes still work.
  * TODO Make the 'generate_pages' module-user invisible somehow
  *
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- * TODO - need to hook template delete and remove db rows
- * todo - need to hook a template create that copies another template?????
  * TODO The dates are not saving in the field tab. Only saving the year!!!!!!!!!!!
  * todo Sometimes a text field will be numbers and it would be nice to be able to designate an upper and lower span for numbers as text
  *
@@ -64,49 +61,66 @@ class NewFieldsGeneratePages extends WireData implements Module {
    */
   public function init() {
 
-    // Hook into a template save to add db table rows for field configs
+    // Hook into a template save to add db table rows for field configs added
     $this->addHookAfter('ProcessTemplate::fieldAdded', $this, 'addConfigFields');
-    // Hook into a template save to add db table rows for field configs
+    // Hook into a template save to add db table rows for field configs removed
     $this->addHookAfter('ProcessTemplate::fieldRemoved', $this, 'removeConfigFields');
+    // Hook into a template name change
+    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
+    // Hook into a template delete
+//    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
+    // Hook into a new template created
+//    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
 
     // todo - need to hook template delete
     // todo - need to hook a template create that copies another template?????
+    // todo - need to hook a template rename and alter the db
+
 
   }
 
 
   /**
    * A callback function for the hook on the template save to add
-   * rows into the config table when a field is added to the template
+   * rows in the config table when a field is added to the template
    *
    * @param $event
    */
-  public function addConfigFields(HookEvent $event) {
+  protected function addConfigFields(HookEvent $event) {
 
     $field = $event->arguments(0);
     $template = $event->arguments(1);
 
     $this->db_queries->createConfigRows($field, $template);
 
-//    $this->message("Generate Pages config fields created!");
+    $this->message("Generate Pages config fields created: $field->name");
 
   }
 
 
   /**
-   * A callback function for the hook on the template save to add
-   * rows into the config table when a field is removed from the template
+   * A callback function for the hook on the template save to remove
+   * rows in the config table when a field is removed from the template
    *
    * @param $event
    */
-  public function removeConfigFields(HookEvent $event) {
+  protected function removeConfigFields(HookEvent $event) {
 
     $field = $event->arguments(0);
     $template = $event->arguments(1);
 
     $this->db_queries->deleteConfigRows($field, $template);
 
-//    $this->message("Generate Pages Hook removeConfigField Executed!");
+    $this->message("Generate Pages config fields removed: $field->name");
+
+  }
+
+
+  protected function templateRename(HookEvent $event) {
+
+    $this->message("Generate Pages: Template rename callback called");
+    // This is the query for rename --- UPDATE gp_field_configs SET template_name='link' WHERE template_name='link_page'
+
 
   }
 
