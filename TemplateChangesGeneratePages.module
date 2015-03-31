@@ -14,13 +14,15 @@
  * - This module relies heavily on the settings in pages that allow for parents and children (these should be set)
  * - If the plugin is uninstalled and re-installed then deleting auto-generated page will not work ( a new user is created on install and it will have a new id number)
  *
+ * Extends ProcessTemplate in order to access protected properties in that class
+ *
  * User: lloop
  * Date: 6/25/14
  * Time: 5:58 PM
  */
 
 
-class NewFieldsGeneratePages extends WireData implements Module {
+class TemplateChangesGeneratePages extends ProcessTemplate implements Module {
 
 
   /**
@@ -42,7 +44,7 @@ class NewFieldsGeneratePages extends WireData implements Module {
   public static function getModuleInfo() {
 
     return array(
-      'title' => 'Generate Pages - New Fields',
+      'title' => 'Generate Pages - Template Changes',
       'version' => 1,
       'summary' => 'Broken out of Generate Pages module so that only hooks are auto-loaded',
       'author' => 'Richard Panciera',
@@ -61,20 +63,23 @@ class NewFieldsGeneratePages extends WireData implements Module {
    */
   public function init() {
 
-    // Hook into a template save to add db table rows for field configs added
+    // Hook into a template save when fields are added
     $this->addHookAfter('ProcessTemplate::fieldAdded', $this, 'addConfigFields');
-    // Hook into a template save to add db table rows for field configs removed
+
+    // Hook into a template save when fields are removed
     $this->addHookAfter('ProcessTemplate::fieldRemoved', $this, 'removeConfigFields');
-    // Hook into a template name change
-    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
+
+    // Hook into a template rename (Hook is before because of confirm dialog)
+     $this->addHookBefore('ProcessTemplate::executeRename', $this, 'templateRename');
+
     // Hook into a template delete
-//    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
-    // Hook into a new template created
+    $this->addHookAfter('Templates::delete', $this, 'templateDelete');
+
+    // Hook into a template created
 //    $this->addHookAfter('ProcessTemplate::executeRename', $this, 'templateRename');
 
-    // todo - need to hook template delete
-    // todo - need to hook a template create that copies another template?????
-    // todo - need to hook a template rename and alter the db
+    // Hook into a template cloned
+    $this->addHookAfter('Templates::clone', $this, 'templateClone');
 
 
   }
@@ -91,9 +96,9 @@ class NewFieldsGeneratePages extends WireData implements Module {
     $field = $event->arguments(0);
     $template = $event->arguments(1);
 
-    $this->db_queries->createConfigRows($field, $template);
+    $result = $this->db_queries->createConfigRows($field, $template);
 
-    $this->message("Generate Pages config fields created: $field->name");
+    return $result;
 
   }
 
@@ -109,20 +114,73 @@ class NewFieldsGeneratePages extends WireData implements Module {
     $field = $event->arguments(0);
     $template = $event->arguments(1);
 
-    $this->db_queries->deleteConfigRows($field, $template);
+    $result = $this->db_queries->deleteFieldConfigs($field, $template);
 
-    $this->message("Generate Pages config fields removed: $field->name");
+    return $result;
 
   }
 
 
+  /**
+   * Callback for the hook on a template rename
+   *
+   * @param HookEvent $event
+   */
   protected function templateRename(HookEvent $event) {
 
-    $this->message("Generate Pages: Template rename callback called");
-    // This is the query for rename --- UPDATE gp_field_configs SET template_name='link' WHERE template_name='link_page'
+    $result = false;
 
+    if($event->input->post->confirm_rename) {
+      $old_name = $event->object->template->name;
+      $name = $event->input->post->confirm_rename;
+      $result = $this->db_queries->templateRename($old_name, $name);
+    }
+
+    return $result;
+
+  }
+
+  /**
+   * Callback for the hook on a template rename
+   *
+   * @param HookEvent $event
+   */
+  protected function templateDelete(HookEvent $event) {
+
+    $template = $event->arguments(0);
+    $template_name = $template->name;
+
+    $result = $this->db_queries->templateDelete($template_name);
+
+    return $result;
+
+  }
+
+
+  /**
+   * Callback for the hook on a template clone
+   *
+   * @param HookEvent $event
+   */
+  protected function templateClone(HookEvent $event) {
+
+    // $template->object is the object that the hook was called on
+    $template = $event->object;
+    $name = $event->object->template->name;
+
+    // $event->return is the returned object
+    $template_clone = $event->return;
+    $new_name = $template_clone->name;
+
+    $result = $this->db_queries->templateClone($name, $new_name);
+
+    return $result;
 
   }
 
 
 }
+
+
+
+

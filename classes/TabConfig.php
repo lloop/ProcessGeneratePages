@@ -320,41 +320,54 @@ class TabConfig extends Tab {
 
     $sanitizer = wire('sanitizer');
 
-    foreach ($posts as $post => $value) {
-      // Split the name to remove the subject field id
-      $name_arr = explode('-', $post);
+    // Get sanitizer from the default values array
+    $d_values = ProcessGeneratePages::$default_values;
 
-      // Filter out all the items that don't have a dash in there name (like the submit button)
-      if (count($name_arr) > 1) {
+    foreach ($posts as $template_name=>$subj_id_array) {
 
-        // Get sanitizer from the default values array
-        $d_values = ProcessGeneratePages::$default_values;
-        $san = $d_values[$name_arr[0]]['sanitizer'];
+      // Only process the items that are arrays
+      // (token and submit button are strings)
+      if(is_array($subj_id_array)) {
 
-        switch ($san) {
-          case 'text' :
-            $res = $sanitizer->text($value);
-            break;
-          case 'text_small':
-            $res = $sanitizer->text($value, array('maxLength' => 50));
-            break;
-          case 'text_area':
-            $res = $sanitizer->textarea($value);
-            break;
-          case 'int':
-            $res = (int) $value;
-            break;
-          case 'float':
-            $res = (float) $value;
-            break;
-          default:
-            throw new WireException("Invalid sanitizer type: " . $san . " in TabField class");
+        // next level is #subject_ids=>value_array
+        // value_array is conf_field_names=>conf_field_values
+        foreach ($subj_id_array as $subj_id=>$conf_array) {
+
+          foreach($conf_array as $conf_name=>$conf_val) {
+
+            // Get the sanitizer type from the conf_field name
+            $san = $d_values[$conf_name]['sanitizer'];
+
+            // Sanitize conf_value
+            switch ($san) {
+              case 'text' :
+                $res = $sanitizer->text($conf_val);
+                break;
+              case 'text_small':
+                $res = $sanitizer->text($conf_val, array('maxLength' => 50));
+                break;
+              case 'text_area':
+                $res = $sanitizer->textarea($conf_val);
+                break;
+              case 'int':
+                $res = (int) $conf_val;
+                break;
+              case 'float':
+                $res = (float) $conf_val;
+                break;
+              default:
+                throw new WireException("Invalid sanitizer type: " . $san . " in TabField class");
+            }
+
+            // Assign sanitized to  $_POST
+            $posts[$template_name][$subj_id][$conf_name] = $res;
+
+          }
+
         }
 
-        $posts[$post] = $res;
-
       } else {
-        unset($posts[$post]);
+        unset($posts[$template_name]);
       }
 
     }

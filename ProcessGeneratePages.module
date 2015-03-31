@@ -2,7 +2,7 @@
 /**
  * TODO arrange the delete tab so that a delete search can happen with a custom string in the title
  * TODO when fields tab opens make the sort order on templates
- * TODO Change name of NewFieldsGeneratePages.module to HooksGeneratePages.module
+ * TODO Change name of TemplateChangesGeneratePages.module to HooksGeneratePages.module
  * ---------------
  * TODO Hook into a template name change and alter the db
  * TODO Hook into a field add or remove on a template and add or remove from the field config table
@@ -103,10 +103,10 @@ class ProcessGeneratePages extends Process implements Module {
     'latest_date'         => array('value'      => '2010-01-01 00:00:01',
                                    'sanitizer'  => 'text'
     ),
-    'date_dep_confirm'      => array('value'      => '!chkd',
+    'date_dep_confirm'      => array('value'    => '!chkd',
                                    'sanitizer'  => 'text'
     ),
-    'date_dep_length'     => array('value'     => '0',
+    'date_dep_length'     => array('value'      => '0',
                                     'sanitizer' => 'int'
     ),
     'string_type'         => array('value'      => 'lorem_ipsum',
@@ -183,7 +183,7 @@ class ProcessGeneratePages extends Process implements Module {
       'autoload' => false,
       'permission' => $permission,
       'requires' => array('ProcessWire>=2.5.2'),
-      'installs'  => array('InputfieldFieldConfig', 'NewFieldsGeneratePages')
+      'installs'  => array('InputfieldFieldConfig', 'TemplateChangesGeneratePages')
     );
 
   }
